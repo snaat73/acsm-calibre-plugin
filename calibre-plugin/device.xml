@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<adept:deviceInfo xmlns:adept="http://ns.adobe.com/adept">
+  <adept:deviceType>standalone</adept:deviceType>
+  <adept:deviceClass>Desktop</adept:deviceClass>
+  <adept:deviceSerial>90ba45ee730d7534d999a2fa98b80c057afbd3c6</adept:deviceSerial>
+  <adept:deviceName>SNAAT3</adept:deviceName>
+  <adept:version name="hobbes" value="12.0.123217"/>
+  <adept:version name="clientOS" value="Windows 8"/>
+  <adept:version name="clientLocale" value="de"/>
+  <adept:fingerprint>z/wZjJkWbh4v7amV3UFtA9HAi6U=</adept:fingerprint>
+</adept:deviceInfo>

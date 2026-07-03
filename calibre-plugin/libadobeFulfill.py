@@ -225,6 +225,8 @@ def doOperatorAuth(operatorURL):
     activationxml = etree.parse(get_activation_xml_path())
 
     activationURL = activationxml.find("./%s/%s" % (adNS("activationToken"), adNS("activationURL"))).text
+    if activationURL and activationURL.startswith("http://adeactivate.adobe.com"):
+        activationURL = "https://" + activationURL[len("http://"):]
 
     init_license_service_request = buildInitLicenseServiceRequest(authURL)
 
@@ -232,7 +234,10 @@ def doOperatorAuth(operatorURL):
         return "Creating license request failed!"
 
 
-    resp = sendRequestDocu(init_license_service_request, activationURL + "/InitLicenseService").decode("utf-8")
+    init_resp = sendRequestDocu(init_license_service_request, activationURL + "/InitLicenseService")
+    if init_resp is None:
+        return "InitLicenseService request failed (no response)"
+    resp = init_resp.decode("utf-8")
     if "<error" in resp: 
         return "Looks like that failed: %s" % resp
     elif "<success" in resp: 

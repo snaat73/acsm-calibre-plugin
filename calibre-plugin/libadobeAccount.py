@@ -33,6 +33,13 @@ from libadobe import VAR_VER_ALLOWED_BUILD_IDS_SWITCH_TO, VAR_VER_SUPP_VERSIONS,
 from libadobe import VAR_ACS_SERVER_HTTPS, VAR_VER_BUILD_IDS, VAR_VER_NEED_HTTPS_BUILD_ID_LIMIT, VAR_VER_ALLOWED_BUILD_IDS_AUTHORIZE
 
 
+def _force_https_for_adobe(url):
+    # Some networks block outbound HTTP (port 80). Adobe endpoints work via HTTPS.
+    if url and url.startswith("http://adeactivate.adobe.com"):
+        return "https://" + url[len("http://"):]
+    return url
+
+
 def createDeviceFile(randomSerial, useVersionIndex = 0): 
     # type: (bool, int) -> bool
 
@@ -115,7 +122,7 @@ def getAuthMethodsAndCert():
     # to the createUser function call. 
     # Otherwise the plugin will not look 100% like ADE to Adobe.
 
-    authenticationURL = VAR_ACS_SERVER_HTTP + "/AuthenticationServiceInfo"
+    authenticationURL = _force_https_for_adobe(VAR_ACS_SERVER_HTTP + "/AuthenticationServiceInfo")
     response2 = sendHTTPRequest(authenticationURL)
 
     adobe_response_xml2 = etree.fromstring(response2)
@@ -184,8 +191,8 @@ def createUser(useVersionIndex = 0, authCert = None):
 
     adNS = lambda tag: '{%s}%s' % ('http://ns.adobe.com/adept', tag)
 
-    authURL = adobe_response_xml.find("./%s" % (adNS("authURL"))).text
-    userInfoURL = adobe_response_xml.find("./%s" % (adNS("userInfoURL"))).text
+    authURL = _force_https_for_adobe(adobe_response_xml.find("./%s" % (adNS("authURL"))).text)
+    userInfoURL = _force_https_for_adobe(adobe_response_xml.find("./%s" % (adNS("userInfoURL"))).text)
     certificate = adobe_response_xml.find("./%s" % (adNS("certificate"))).text
 
     if (authURL is None or userInfoURL is None or certificate is None):
@@ -203,7 +210,7 @@ def createUser(useVersionIndex = 0, authCert = None):
 
     if authCert is None: 
         # This is not supposed to happen, but if it does, then just query it again from Adobe.
-        authenticationURL = authURL + "/AuthenticationServiceInfo"
+        authenticationURL = _force_https_for_adobe(authURL + "/AuthenticationServiceInfo")
         response2 = sendHTTPRequest(authenticationURL)
 
         adobe_response_xml2 = etree.fromstring(response2)

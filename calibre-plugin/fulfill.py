@@ -12,7 +12,7 @@ https://github.com/Leseratte10/acsm-calibre-plugin
 
 # pyright: reportUndefinedVariable=false
 
-import sys, os, time, shutil
+import sys, os, time, shutil, re
 
 import zipfile
 from lxml import etree
@@ -28,8 +28,18 @@ FILE_ACTIVATIONXML = "activation.xml"
 #######################################################################
 
 
-def download(replyData):
+def sanitize_filename(name):
+    # Replace characters that are invalid on common filesystems (especially Windows).
+    sanitized = re.sub(r'[\\/:*?"<>|]+', "_", name)
+    sanitized = sanitized.strip().rstrip('.')
+    if sanitized == "":
+        return "Book"
+    return sanitized
+
+
+def download(replyData, output_dir=None):
     # replyData: str
+    # output_dir: str (optional) - directory to save the output file
     adobe_fulfill_response = etree.fromstring(replyData)
     NSMAP = { "adept" : "http://ns.adobe.com/adept" }
     adNS = lambda tag: '{%s}%s' % ('http://ns.adobe.com/adept', tag)
@@ -61,7 +71,16 @@ def download(replyData):
 
     print(download_url)
 
-    filename_tmp = book_name + ".tmp"
+    # Use output_dir if provided, otherwise use current directory
+    if output_dir is None:
+        output_dir = os.getcwd()
+
+    # Ensure target directory exists before writing temporary file.
+    os.makedirs(output_dir, exist_ok=True)
+
+    book_name = sanitize_filename(book_name)
+    
+    filename_tmp = os.path.join(output_dir, book_name + ".tmp")
 
     dl_start_time = int(time.time() * 1000)
     ret = sendHTTPRequest_DL2FILE(download_url, filename_tmp)
@@ -84,7 +103,7 @@ def download(replyData):
         print("That's a PDF file")
         filetype = ".pdf"
 
-    filename = book_name + filetype
+    filename = os.path.join(output_dir, book_name + filetype)
     shutil.move(filename_tmp, filename)
 
     if filetype == ".epub":
@@ -104,9 +123,14 @@ def download(replyData):
         adNS = lambda tag: '{%s}%s' % ('http://ns.adobe.com/adept', tag)
         resource = adobe_fulfill_response.find("./%s/%s" % (adNS("licenseToken"), adNS("resource"))).text
         
-        os.rename(filename, "tmp_" + filename)
-        ret = patch_drm_into_pdf("tmp_" + filename, rights_xml_str, filename, resource)
-        os.remove("tmp_" + filename)
+        # Create temporary filename with proper path handling
+        file_dir = os.path.dirname(filename)
+        file_base = os.path.basename(filename)
+        tmp_filename = os.path.join(file_dir, "tmp_" + file_base)
+        
+        os.rename(filename, tmp_filename)
+        ret = patch_drm_into_pdf(tmp_filename, rights_xml_str, filename, resource)
+        os.remove(tmp_filename)
         if (ret):
             print("File successfully fulfilled to " + filename)
             return True
@@ -135,7 +159,9 @@ def main():
             print(replyData)
         else: 
             print("Downloading book '" + file + "' ...")
-            success = download(replyData)
+            # Get the directory of the ACSM file for output
+            acsm_dir = os.path.dirname(os.path.abspath(file))
+            success = download(replyData, acsm_dir)
             if (success is False):
                 print("That didn't work!")
 
