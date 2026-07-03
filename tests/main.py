@@ -432,6 +432,34 @@ class TestPluginInterface(unittest.TestCase):
     def forcefail(self):
         self.assertEqual(1, 2, "force fail")
 
+    @unittest.skipIf(sys.platform.startswith("win"), "Does not work on Windows due to file permissions.")
+    @unittest.skipIf(sys.version_info >= (3, 14, 0), "This is currently buggy, see cpython bug #152445")
+    def test_addFileToZipIn1970(self):
+        '''Check if ZIP file writing works in 1970'''
+
+        source_date_epoch_old = None
+
+        if 'SOURCE_DATE_EPOCH' in os.environ:
+            source_date_epoch_old = os.environ['SOURCE_DATE_EPOCH']
+        
+        os.environ['SOURCE_DATE_EPOCH'] = '1'
+
+        import zipfile, tempfile, struct
+        try: 
+            tf = tempfile.NamedTemporaryFile(suffix='.zip')
+            if sys.version_info < (3, 8, 0):
+                zf = zipfile.ZipFile(tf.name, "w")
+            else: 
+                zf = zipfile.ZipFile(tf.name, "w", strict_timestamps=False)
+            zf.writestr("test.xml", "Hallo Welt")
+            zf.close()
+        except struct.error:
+            self.fail("Failed to add file to ZIP archive")
+        finally: 
+            if source_date_epoch_old is not None: 
+                os.environ['SOURCE_DATE_EPOCH'] = source_date_epoch_old
+
+
     def test_loanReturnFulfillmentID(self): 
         '''Check if proper ID is used for the loan token'''
 
